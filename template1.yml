@@ -1,0 +1,70 @@
+AWSTemplateFormatVersion: '2010-09-09'
+
+Resources:
+  BucketA:
+    Type: 'AWS::S3::Bucket'
+    Properties:
+      BucketName: !Sub '${AWS::StackName}-bucket-a'
+      VersioningConfiguration:
+        Status: Enabled
+      # ReplicationConfiguration:
+      #   Role: !GetAtt S3BucketRole.Arn
+      #   Rules:
+      #     - Destination:
+      #         Bucket: !Sub 'arn:aws:s3:::${AWS::StackName}-bucket-b'
+      #       Status: Enabled
+
+  BucketB:
+    Type: 'AWS::S3::Bucket'
+    Properties:
+      BucketName: !Sub '${AWS::StackName}-bucket-b'
+      VersioningConfiguration:
+        Status: Enabled
+      # ReplicationConfiguration:
+      #   Role: !GetAtt S3BucketRole.Arn
+      #   Rules:
+      #     - Destination:
+      #         Bucket: !Sub 'arn:aws:s3:::${AWS::StackName}-bucket-a'
+      #       Status: Enabled
+
+  S3BucketRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub "${AWS::StackName}-bucket-role"
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - s3.amazonaws.com
+            Action:
+              - sts:AssumeRole
+      Policies:
+        - PolicyName: "s3-replication-policy"
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - s3:ListBucket
+                  - s3:GetReplicationConfiguration
+                Resource:
+                  - !Sub "arn:aws:s3:::${AWS::StackName}-bucket-a"
+                  - !Sub "arn:aws:s3:::${AWS::StackName}-bucket-b"
+              - Effect: Allow
+                Action:
+                 - s3:GetObjectVersionForReplication
+                 - s3:GetObjectVersionAcl
+                 - s3:GetObjectVersionTagging
+                Resource:
+                  - !Sub "arn:aws:s3:::${AWS::StackName}-bucket-a/*"
+                  - !Sub "arn:aws:s3:::${AWS::StackName}-bucket-b/*"
+              - Effect: Allow
+                Action:
+                  - s3:ReplicateObject
+                  - s3:ReplicateDelete
+                  - s3:ReplicateTags
+                Resource:
+                  - !Sub "arn:aws:s3:::${AWS::StackName}-bucket-a/*"
+                  - !Sub "arn:aws:s3:::${AWS::StackName}-bucket-b/*"
